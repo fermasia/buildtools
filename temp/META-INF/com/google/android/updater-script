@@ -1,0 +1,54 @@
+ui_print("");
+ui_print(" DONKEY KANG KERNEL");
+ui_print(" for Moto G ");
+ui_print(" ");
+ui_print(" Let's begin flashing.");
+
+ifelse(is_mounted("/system") == "/system", unmount("/system"));
+ifelse(is_mounted("/cache") == "/cache", unmount("/cache"));
+set_progress(0.2);
+
+################ Extract Files and Set Permissions
+ui_print(" > Extracting kernel files                     ");
+package_extract_dir("kernel", "/tmp");
+set_perm(0, 0, 0777, "/tmp/busybox");
+set_progress(0.4);
+
+################ Mount System
+ui_print(" > Mount /cache...");
+ui_print(" > Mount /data...");
+ui_print(" > Mount /system...");
+mount("ext4", "EMMC", "/dev/block/platform/msm_sdcc.1/by-name/cache", "/cache");
+mount("ext4", "EMMC", "/dev/block/platform/msm_sdcc.1/by-name/userdata", "/data");
+mount("ext4", "EMMC", "/dev/block/platform/msm_sdcc.1/by-name/system", "/system");
+set_progress(0.6);
+
+################ Clean
+ui_print(" > Clean unneded files     ");
+run_program("/tmp/busybox", "dd", "if=/dev/block/platform/msm_sdcc.1/by-name/boot", "of=/tmp/boot.img");
+set_progress(0.8);
+
+################ Mount clean and install kernel files
+ui_print(" > Installing boot.img...                      ");
+package_extract_file("boot.img", "/dev/block/platform/msm_sdcc.1/by-name/boot");
+ui_print(" > Installing modules...");
+mount("ext4", "EMMC", "/dev/block/platform/msm_sdcc.1/by-name/system", "/system");
+delete_recursive("/system/lib/modules");
+package_extract_dir("system", "/system");
+set_perm_recursive(0, 0, 0755, 0644, "/system/lib/modules");
+symlink("/system/lib/modules/pronto/pronto_wlan.ko", "/system/lib/modules/wlan.ko");
+unmount("/cache");
+unmount("/data");
+unmount("/system");
+set_progress(0.9);
+
+################ Wipe Cache
+ui_print(" > Wiping /cache");
+run_program("/sbin/busybox", "mount", "/cache");
+delete_recursive("/cache/");
+run_program("/sbin/busybox", "umount", "/cache");
+set_progress(1.0);
+
+ui_print("");
+ui_print(" - Installation OK ");
+ui_print(" - Reboot and enjoy ");
